@@ -13,21 +13,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
 */
-#ifndef EUGENIA_MULTITHREADING_SORT_SORT_HPP
-#define EUGENIA_MULTITHREADING_SORT_SORT_HPP
+#ifndef EUGENIA_MULTITHREADING_SORT_MERGESORT_HPP
+#define EUGENIA_MULTITHREADING_SORT_MERGESORT_HPP
 
 #include <iterator>
 #include <algorithm>
 #include <thread>
 
 #include "../defines.hpp"
+#include "../helpers.hpp"
 
 EUGENIA_MULTITHREADING_NAMESPACE_BEGIN
 
 DETAILS_NAMESPACE_BEGIN
 
 template <class RandomIterator, class Compare>
-void mergesort(RandomIterator first, RandomIterator last, Compare comp, std::size_t max_threads, std::size_t current_threads = 0, std::size_t size = 0)
+void mergesort(RandomIterator first, RandomIterator last, Compare comp, std::size_t max_depth, std::size_t current_depth = 0, std::size_t size = 0)
 {
     if (size == 0 && first != last)
         size = std::distance(first, last);
@@ -40,18 +41,18 @@ void mergesort(RandomIterator first, RandomIterator last, Compare comp, std::siz
     RandomIterator mid = first;
     std::advance(mid, left_half);
 
-    if (current_threads < max_threads)
+    if (current_depth < max_depth)
     {
-        std::thread thread_left = std::thread(mergesort<RandomIterator, Compare>, first, mid, comp, max_threads, current_threads + 1, left_half);
-        std::thread thread_right = std::thread(mergesort<RandomIterator, Compare>, mid, last, comp, max_threads, current_threads + 1, right_half);
+        std::thread thread_left = std::thread(mergesort<RandomIterator, Compare>, first, mid, comp, max_depth, current_depth + 1, left_half);
+        std::thread thread_right = std::thread(mergesort<RandomIterator, Compare>, mid, last, comp, max_depth, current_depth + 1, right_half);
 
         thread_left.join();
         thread_right.join();
     }
     else
     {
-        mergesort(first, mid, comp, max_threads, current_threads, left_half);
-        mergesort(mid, last, comp, max_threads, current_threads, right_half);
+        mergesort(first, mid, comp, max_depth, current_depth, left_half);
+        mergesort(mid, last, comp, max_depth, current_depth, right_half);
     }
     std::inplace_merge(first, mid, last, comp);
 }
@@ -61,7 +62,12 @@ DETAILS_NAMESPACE_END
 template <class RandomIterator, class Compare>
 void mergesort(RandomIterator first, RandomIterator last, Compare comp, std::size_t max_threads)
 {
-    details::mergesort(first, last, comp, max_threads);
+    if (max_threads == 0)
+        max_threads = std::thread::hardware_concurrency();
+    if (max_threads == 0)
+        max_threads = 1;
+    std::size_t max_depth = helpers::log2(max_threads);
+    details::mergesort(first, last, comp, max_depth);
 }
 
 template <class RandomIterator>
@@ -72,4 +78,4 @@ void mergesort(RandomIterator first, RandomIterator last, std::size_t max_thread
 
 EUGENIA_MULTITHREADING_NAMESPACE_END
 
-#endif // !EUGENIA_MULTITHREADING_SORT_SORT_HPP
+#endif // !EUGENIA_MULTITHREADING_SORT_MERGESORT_HPP
